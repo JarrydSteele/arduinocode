@@ -1,3 +1,5 @@
+#include "Arduino.h"
+
 /* LED Blink, Teensyduino Tutorial #1
    http://www.pjrc.com/teensy/tutorial.html
 

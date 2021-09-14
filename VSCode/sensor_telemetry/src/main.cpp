@@ -1,17 +1,20 @@
+#include <Arduino.h>
+
+
+
+
 
 // Start ADC Init
-#include <Adafruit_ADS1X15.h>
-#include <Wire.h>
- 
-Adafruit_ADS1115 ADC1;         //Address (0x48)
-Adafruit_ADS1115 ADC2;         //Address (0x49)
+#include "Adafruit_ADS1X15.h"
+#include "Wire.h"
+Adafruit_ADS1X15 ADC1;         //Address (0x48)
+Adafruit_ADS1X15 ADC2;         //Address (0x49)
 
 int16_t adc0, adc1, adc2, adc3, adc4, adc5, adc6, adc7;
 // End ACD Init
 
 // Start IMU Init
 #include "GY521.h"
-
 GY521 sensor(0x68);
 
 uint32_t counter = 0;
@@ -21,13 +24,12 @@ float pitch, roll, yaw;
 
 // Start Pressure Init
 #include "SparkFunBME280.h"
-//BME280 mySensorA; //Uses default I2C address 0x77
 BME280 PressureSensor; //Uses I2C address 0x76 (jumper closed)
 float pressure, temp_c, altitude;
 // End Pressure Init
 
 const long SERIAL_REFRESH_TIME = 100;
-long refresh_time;
+unsigned long refresh_time;
 
 
 
@@ -81,7 +83,63 @@ void setup(void)
 
 
 
+void printtelem(void)
+{
+  // Start Print ADC Readings
+  Serial.print("AIN0: ");                        Serial.print(adc0);
+  Serial.print(", AIN1: ");                      Serial.print(adc1);
+  Serial.print(", AIN2: ");                      Serial.print(adc2);
+  Serial.print(", AIN3: ");                      Serial.print(adc3);
+  Serial.print(", AIN4: ");                      Serial.print(adc4);
+  Serial.print(", AIN5: ");                      Serial.print(adc5);
+  Serial.print(", AIN6: ");                      Serial.print(adc6);
+  Serial.print(", AIN7: ");                      Serial.print(adc7);
+  //Serial.println("");
+  // End Print ADC Readings
 
+  // Start Print IMU Readings
+  Serial.print(", Pitch: ");                     Serial.print(pitch, 3);
+  Serial.print(", Roll: ");                      Serial.print(roll, 3);
+  Serial.print(", Yaw: ");                       Serial.print(yaw, 3);
+  //Serial.println();
+  // End Print IMU Readings
+
+  // Start Print Pressure Readings
+  Serial.print(", Pressure: ");                  Serial.print(pressure, 0);
+  Serial.print(", Temp: ");                      Serial.print(temp_c, 2);
+  Serial.print(", Locally Adjusted Altitude: "); Serial.print(altitude, 2);
+
+  Serial.println();
+  // End Print Pressure Readings
+}
+
+void printrawtelem(void)
+{
+  // Start Print ADC Readings
+  Serial.print(adc0);                Serial.print("\t");
+  Serial.print(adc1);                Serial.print("\t");
+  Serial.print(adc2);                Serial.print("\t");
+  Serial.print(adc3);                Serial.print("\t");
+  Serial.print(adc4);                Serial.print("\t");
+  Serial.print(adc5);                Serial.print("\t");
+  Serial.print(adc6);                Serial.print("\t");
+  Serial.print(adc7);                Serial.print("\t");
+  // End Print ADC Readings
+
+  // Start Print IMU Readings
+  Serial.print(pitch, 3);            Serial.print("\t");
+  Serial.print(roll, 3);             Serial.print("\t");
+  Serial.print(yaw, 3);              Serial.print("\t");
+  // End Print IMU Readings
+
+  // Start Print Pressure Readings
+  Serial.print(pressure, 0);         Serial.print("\t");
+  Serial.print(temp_c, 2);           Serial.print("\t");
+  Serial.print(altitude, 2);
+
+  Serial.println();
+  // End Print Pressure Readings
+}
 
 
 
@@ -114,7 +172,7 @@ void loop(void)
 
   if (millis() > refresh_time)
   {
-    printtelem();
+    printrawtelem();
     refresh_time=millis()+SERIAL_REFRESH_TIME;
   }
   
@@ -122,32 +180,3 @@ void loop(void)
   delay(100);
 }
 
-void printtelem(void)
-{
-  // Start Print ADC Readings
-  Serial.print("AIN0: ");                        Serial.print(adc0);
-  Serial.print(", AIN1: ");                      Serial.print(adc1);
-  Serial.print(", AIN2: ");                      Serial.print(adc2);
-  Serial.print(", AIN3: ");                      Serial.print(adc3);
-  Serial.print(", AIN4: ");                      Serial.print(adc4);
-  Serial.print(", AIN5: ");                      Serial.print(adc5);
-  Serial.print(", AIN6: ");                      Serial.print(adc6);
-  Serial.print(", AIN7: ");                      Serial.print(adc7);
-  //Serial.println("");
-  // End Print ADC Readings
-
-  // Start Print IMU Readings
-  Serial.print(", Pitch: ");                     Serial.print(pitch, 3);
-  Serial.print(", Roll: ");                      Serial.print(roll, 3);
-  Serial.print(", Yaw: ");                       Serial.print(yaw, 3);
-  //Serial.println();
-  // End Print IMU Readings
-
-  // Start Print Pressure Readings
-  Serial.print(", Pressure: ");                  Serial.print(pressure, 0);
-  Serial.print(", Temp: ");                      Serial.print(temp_c, 2);
-  Serial.print(", Locally Adjusted Altitude: "); Serial.print(altitude, 2);
-
-  Serial.println();
-  // End Print Pressure Readings
-}
