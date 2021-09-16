@@ -5,8 +5,11 @@
 #include "EEPROM.h"
 #include "SparkFunBME280.h"
 
-const long SERIAL_REFRESH_TIME = 25;
-unsigned long refresh_time;
+const long SERIAL_REFRESH_PERIOD = 10;
+unsigned long serial_refresh_time;
+
+const long ADC_REFRESH_PERIOD = 50;
+unsigned long adc_refresh_time;
 
 //FIXME: make work
 
@@ -79,13 +82,14 @@ void print_calibration() {
 // Start Pressure Init
 
 BME280 PressureSensor; //Uses I2C address 0x76 (jumper closed)
+
 float pressure, temp_c, altitude;
+
 // End Pressure Init
 
 void setup(void)
 {
   Serial.begin(115200);
-  Serial.println("Hello!");
 
 // Start ADC Setup
   Serial.println("Getting single-ended readings from AIN0..7");
@@ -97,7 +101,7 @@ void setup(void)
 // Start IMU Setup
   Wire.begin();
   //Wire.setClock(400000); //Increase to fast I2C speed!  //**************************************
-  delay(2000);
+  delay(200);
 
   if (!mpu.setup(0x68)) {  // change to your own address
       while (1) {
@@ -113,12 +117,12 @@ void setup(void)
     Serial.println("Accel Gyro calibration will start in 5sec.");
     Serial.println("Please leave the device still on the flat plane.");
     mpu.verbose(true);
-    delay(5000);
+    delay(1000);
     mpu.calibrateAccelGyro();
 
     Serial.println("Mag calibration will start in 5sec.");
     Serial.println("Please Wave device in a figure eight until done.");
-    delay(5000);
+    delay(1000);
     mpu.calibrateMag();
 
     // get values from calibration
@@ -128,10 +132,10 @@ void setup(void)
     MagScaleX = mpu.getMagScaleX();   MagScaleY = mpu.getMagScaleY();   MagScaleZ = mpu.getMagScaleZ();
     
     // write calibration values to EEPROM
-    EEPROM.put(0,AccBiasX);   EEPROM.put(4,AccBiasY);     EEPROM.put(8,AccBiasZ);
+    EEPROM.put(0,AccBiasX);    EEPROM.put(4,AccBiasY);       EEPROM.put(8,AccBiasZ);
     EEPROM.put(12,GyroBiasX);  EEPROM.put(16,GyroBiasY);    EEPROM.put(20,GyroBiasZ);
     EEPROM.put(24,MagBiasX);   EEPROM.put(28,MagBiasY);     EEPROM.put(32,MagBiasZ);
-    EEPROM.put(36,MagScaleX);  EEPROM.put(40,MagScaleY);   EEPROM.put(44,MagScaleZ);
+    EEPROM.put(36,MagScaleX);  EEPROM.put(40,MagScaleY);     EEPROM.put(44,MagScaleZ);
     
     Serial.print("New Calibration Parameters written to EEPROM.");
     delay(1000);
@@ -177,7 +181,7 @@ void setup(void)
   PressureSensor.setI2CAddress(0x76); //Connect to a second sensor
   if (PressureSensor.beginI2C() == false) Serial.println("Sensor B connect failed");
 
-  PressureSensor.setReferencePressure(100200); //Adjust the sea level pressure used for altitude calculations
+  PressureSensor.setReferencePressure(102650); //Adjust the sea level pressure used for altitude calculations --- 102650
 // End Pressure Setup
   
 }
@@ -247,14 +251,19 @@ void printrawtelem(void)
 void loop(void)
 { 
   // Start ADC Readings
-  adc0 = ADC1.readADC_SingleEnded(0);
-  adc1 = ADC1.readADC_SingleEnded(1);
-  adc2 = ADC1.readADC_SingleEnded(2);
-  adc3 = ADC1.readADC_SingleEnded(3);
-  adc4 = ADC2.readADC_SingleEnded(0);
-  adc5 = ADC2.readADC_SingleEnded(1);
-  adc6 = ADC2.readADC_SingleEnded(2);
-  adc7 = ADC2.readADC_SingleEnded(3);
+  if (millis() > adc_refresh_time)
+  {
+    adc0 = ADC1.readADC_SingleEnded(0);
+    adc1 = ADC1.readADC_SingleEnded(1);
+    adc2 = ADC1.readADC_SingleEnded(2);
+    adc3 = ADC1.readADC_SingleEnded(3);
+    adc4 = ADC2.readADC_SingleEnded(0);
+    adc5 = ADC2.readADC_SingleEnded(1);
+    adc6 = ADC2.readADC_SingleEnded(2);
+    adc7 = ADC2.readADC_SingleEnded(3);
+    adc_refresh_time=millis()+ADC_REFRESH_PERIOD;
+  }
+  
   // End ADC Readings
 
   // Start IMU Readings
@@ -262,7 +271,7 @@ void loop(void)
   yaw = mpu.getYaw();
   pitch = mpu.getPitch();
   roll = mpu.getRoll();
-  print_roll_pitch_yaw();
+  
   
 
   // End IMU Readings
@@ -271,15 +280,14 @@ void loop(void)
   pressure = PressureSensor.readFloatPressure();          //Pressure
   temp_c = PressureSensor.readTempC();                    //Temp (C)
   altitude = PressureSensor.readFloatAltitudeMeters();    //Locally Adjusted Altitude (m)
-  // End Pressure Readings
+  // // End Pressure Readings
 
-  if (millis() > refresh_time)
+  if (millis() > serial_refresh_time)
   {
     printtelem();
-    refresh_time=millis()+SERIAL_REFRESH_TIME;
+    //print_roll_pitch_yaw();
+    serial_refresh_time=millis()+SERIAL_REFRESH_PERIOD;
   }
-  
-  
-  delay(100);
+
 }
 
