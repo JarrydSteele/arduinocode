@@ -20,16 +20,6 @@ void setup() {
   digitalWrite(PIN_FC_2, HIGH);
 }
 
-void loop() {
-  rcReceiver.poll();
-  
-  if (rcReceiver.hasNP() && !rcReceiver.hasError()) {
-    mainloop();
-  } else if (rcReceiver.hasError()) {
-    
-  }
-}
-
 void mainloop() {
   byte value = rcReceiver.getValue();
   
@@ -51,4 +41,14 @@ void mainloop() {
     
   }
 
+}
+
+void loop() {
+  rcReceiver.poll();
+  
+  if (rcReceiver.hasNP() && !rcReceiver.hasError()) {
+    mainloop();
+  } else if (rcReceiver.hasError()) {
+    
+  }
 }
