@@ -15,7 +15,7 @@ void printFloat(double f, int digits = 2);
 void setup()
 {
   Serial.begin(115200);
-  Uart.begin(4800);
+  Uart.begin(9600);
   
   delay(1000);
   Serial.print("Testing TinyGPS library v."); Serial.println(TinyGPS::library_version());
@@ -33,7 +33,7 @@ void loop()
   while (millis() - start < 5000) {
     if (Uart.available()) {
       char c = Uart.read();
-      // Serial.print(c);  // uncomment to see raw GPS data
+      //Serial.print(c);  // uncomment to see raw GPS data
       if (gps.encode(c)) {
         newdata = true;
         // break;  // uncomment to print new data immediately!
