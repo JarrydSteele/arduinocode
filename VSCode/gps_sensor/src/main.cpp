@@ -1,38 +1,33 @@
 #include <Arduino.h>
 #include <TinyGPS.h>
 
-/* This sample code demonstrates the normal use of a TinyGPS object. */
 TinyGPS gps;
 
 /* On Teensy, the UART (real serial port) is always best to use. */
-/* Unlike Arduino, there's no need to use NewSoftSerial because */
-/* the "Serial" object uses the USB port, leaving the UART free. */
-HardwareSerial Uart = Serial2;
+
+HardwareSerial GPS = Serial2;
 
 void gpsdump(TinyGPS &gps);
 void printFloat(double f, int digits = 2);
 
+bool newdata = false;
+unsigned long gpsstart = millis();
+
 void setup()
 {
   Serial.begin(115200);
-  Uart.begin(9600);
-  
-  delay(1000);
-  Serial.print("Testing TinyGPS library v."); Serial.println(TinyGPS::library_version());
-  Serial.println();
-  Serial.print("Sizeof(gpsobject) = "); Serial.println(sizeof(TinyGPS));
-  Serial.println();
+  GPS.begin(9600);
 }
 
 void loop()
 {
-  bool newdata = false;
-  unsigned long start = millis();
+  newdata = false;
+  gpsstart = millis();
 
   // Every 5 seconds we print an update
-  while (millis() - start < 5000) {
-    if (Uart.available()) {
-      char c = Uart.read();
+  while (millis() - gpsstart < 5000) {
+    if (GPS.available()) {
+      char c = GPS.read();
       //Serial.print(c);  // uncomment to see raw GPS data
       if (gps.encode(c)) {
         newdata = true;
@@ -62,11 +57,6 @@ void gpsdump(TinyGPS &gps)
   gps.get_position(&lat, &lon, &age);
   Serial.print("Lat/Long(10^-5 deg): "); Serial.print(lat); Serial.print(", "); Serial.print(lon); 
   Serial.print(" Fix age: "); Serial.print(age); Serial.println("ms.");
-  
-  // On Arduino, GPS characters may be lost during lengthy Serial.print()
-  // On Teensy, Serial prints to USB, which has large output buffering and
-  //   runs very fast, so it's not necessary to worry about missing 4800
-  //   baud GPS characters.
 
   gps.f_get_position(&flat, &flon, &age);
   Serial.print("Lat/Long(float): "); printFloat(flat, 5); Serial.print(", "); printFloat(flon, 5);
