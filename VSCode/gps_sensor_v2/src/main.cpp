@@ -1,11 +1,13 @@
 #include <Arduino.h>
 #include <TinyGPS.h>
 
-const long SERIAL_REFRESH_PERIOD = 1000;
+const long SERIAL_REFRESH_PERIOD = 500;
 unsigned long serial_refresh_time;
 
-const long GPS_REFRESH_PERIOD = 3000;
+const long GPS_REFRESH_PERIOD = 499;
 unsigned long gps_refresh_time;
+
+bool gpsON = true;
 
 // Start GPS Init
 
@@ -59,20 +61,19 @@ void printtelem(void)
 void loop(void)
 { 
 // Start GPS Readings
-  if (GPS.available()) {
-    char c = GPS.read();
-    //Serial.print(c);  // uncomment to see raw GPS data
-    if (gps.encode(c)) {
-      gps_fix = true;
+  if (gpsON) {
+    if (millis() > gps_refresh_time){
+      if (GPS.available()) {
+        char c = GPS.read();
+        //Serial.print(c);  // uncomment to see raw GPS data
+        if (gps.encode(c)) {
+          gps_fix = true;
+          get_gps_data();
+          gps_refresh_time=millis()+GPS_REFRESH_PERIOD;
+        }
+      }
     }
   }
-  
-  if (millis() > gps_refresh_time){
-    if (gps_fix)
-      get_gps_data();
-    gps_refresh_time=millis()+GPS_REFRESH_PERIOD;
-  }
-
   // End GPS Readings
 
   if (millis() > serial_refresh_time)

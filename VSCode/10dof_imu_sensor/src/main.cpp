@@ -139,7 +139,7 @@ void loop() {
         roll = mpu.getRoll();
         
         static uint32_t prev_ms = millis();
-        if (millis() > prev_ms + 25) 
+        if (millis() > prev_ms + 250) 
         {
             print_roll_pitch_yaw();
             prev_ms = millis();

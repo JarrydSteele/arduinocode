@@ -25,7 +25,7 @@ void loop()
   gpsstart = millis();
 
   // Every 5 seconds we print an update
-  while (millis() - gpsstart < 5000) {
+  while (millis() - gpsstart < 3000) {
     if (GPS.available()) {
       char c = GPS.read();
       //Serial.print(c);  // uncomment to see raw GPS data

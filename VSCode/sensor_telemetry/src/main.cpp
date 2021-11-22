@@ -6,14 +6,27 @@
 #include "SparkFunBME280.h"
 #include <TinyGPS.h>
 
-const long SERIAL_REFRESH_PERIOD = 10;
+
+
+const long SERIAL_REFRESH_PERIOD = 500;
 unsigned long serial_refresh_time;
 
-const long ADC_REFRESH_PERIOD = 50;
+const long ADC_REFRESH_PERIOD = 100;
 unsigned long adc_refresh_time;
 
-const long GPS_REFRESH_PERIOD = 5000;
+const long IMU_REFRESH_PERIOD = 10;
+unsigned long imu_refresh_time;
+
+const long PRESSURE_REFRESH_PERIOD = 500;
+unsigned long pressure_refresh_time;
+
+const long GPS_REFRESH_PERIOD = 500;
 unsigned long gps_refresh_time;
+
+bool adcON = true;
+bool imuON = true;
+bool pressureON = true;
+bool gpsON = true;
 
 //FIXME: make work
 
@@ -106,6 +119,7 @@ HardwareSerial GPS = Serial2;
 
 void print_gps(TinyGPS &gps);
 void gpsPrintFloat(double f, int digits = 2);
+void get_gps_data();
 
 bool gps_fix = false;
 
@@ -114,17 +128,19 @@ bool gps_fix = false;
 void setup(void)
 {
   Serial.begin(115200);
+  serial_refresh_time = millis() + SERIAL_REFRESH_PERIOD;
 
 // Start ADC Setup
   Serial.println("Getting single-ended readings from AIN0..7");
   Serial.println("ADC Range: +/- 6.144V (1 bit = 3mV)");
   ADC1.begin(); //0x48
   ADC2.begin(0x49);
+  adc_refresh_time = millis() + ADC_REFRESH_PERIOD;
 // End ADC Setup
 
 // Start IMU Setup
   Wire.begin();
-  //Wire.setClock(400000); //Increase to fast I2C speed!  //**************************************
+  Wire.setClock(400000); //Increase to fast I2C speed!  //**************************************
   delay(200);
 
   if (!mpu.setup(0x68)) {  // change to your own address
@@ -195,7 +211,7 @@ void setup(void)
     delay(1000);
   }
 
-
+  imu_refresh_time = millis() + IMU_REFRESH_PERIOD;
     
 // End IMU Setup
 
@@ -206,11 +222,12 @@ void setup(void)
   if (PressureSensor.beginI2C() == false) Serial.println("Sensor B connect failed");
 
   PressureSensor.setReferencePressure(102650); //Adjust the sea level pressure used for altitude calculations --- 102650
+
+  pressure_refresh_time = millis() + PRESSURE_REFRESH_PERIOD;
 // End Pressure Setup
 
 // Start GPS Setup
   GPS.begin(9600);
-
   gps_refresh_time = millis() + GPS_REFRESH_PERIOD;
 // End GPS Setup
   
@@ -226,40 +243,49 @@ void setup(void)
 
 void printtelem(void)
 {
+  Serial.print("SENSE");
   // Start Print ADC Readings
-  Serial.print("AIN0: ");                        Serial.print(adc0);
-  Serial.print(", AIN1: ");                      Serial.print(adc1);
-  Serial.print(", AIN2: ");                      Serial.print(adc2);
-  Serial.print(", AIN3: ");                      Serial.print(adc3);
-  Serial.print(", AIN4: ");                      Serial.print(adc4);
-  Serial.print(", AIN5: ");                      Serial.print(adc5);
-  Serial.print(", AIN6: ");                      Serial.print(adc6);
-  Serial.print(", AIN7: ");                      Serial.print(adc7);
-  //Serial.println("");
+  if (adcON) {
+    Serial.print(", AIN0: ");                        Serial.print(adc0);
+    Serial.print(", AIN1: ");                      Serial.print(adc1);
+    Serial.print(", AIN2: ");                      Serial.print(adc2);
+    Serial.print(", AIN3: ");                      Serial.print(adc3);
+    Serial.print(", AIN4: ");                      Serial.print(adc4);
+    Serial.print(", AIN5: ");                      Serial.print(adc5);
+    Serial.print(", AIN6: ");                      Serial.print(adc6);
+    Serial.print(", AIN7: ");                      Serial.print(adc7);
+    //Serial.println("");
+  }
   // End Print ADC Readings
 
   // Start Print IMU Readings
-  Serial.print(", Pitch: ");                     Serial.print(pitch, 3);
-  Serial.print(", Roll: ");                      Serial.print(roll, 3);
-  Serial.print(", Yaw: ");                       Serial.print(yaw, 3);
-  //Serial.println();
+  if (imuON) {
+    Serial.print(", Pitch: ");                     Serial.print(pitch, 3);
+    Serial.print(", Roll: ");                      Serial.print(roll, 3);
+    Serial.print(", Yaw: ");                       Serial.print(yaw, 3);
+    //Serial.println();
+  }
   // End Print IMU Readings
 
   // Start Print Pressure Readings
-  Serial.print(", Pressure: ");                  Serial.print(pressure, 0);
-  Serial.print(", Temp: ");                      Serial.print(temp_c, 2);
-  Serial.print(", Locally Adjusted Altitude: "); Serial.print(altitude, 2);
-
-  Serial.println();
+  if (pressureON) {
+    Serial.print(", Pressure: ");                  Serial.print(pressure, 0);
+    Serial.print(", Temp: ");                      Serial.print(temp_c, 2);
+    Serial.print(", Locally Adjusted Altitude: "); Serial.print(altitude, 2);
+  }
   // End Print Pressure Readings
 
+  Serial.println();
+
   // Start GPS Readings
-  if (gps_fix) {
-    Serial.println("Acquired Data");
-    Serial.println("-------------");
-    print_gps(gps);
-    Serial.println("-------------");
-    Serial.println();
+  if (gpsON) {
+    if (gps_fix) {
+      Serial.println("GPS fix: ");
+      print_gps(gps);
+      Serial.println();
+    } else {
+      Serial.println(" --------------------------------------------------------- No GPS fix.");
+    }
   }
   // End GPS Readings
 }
@@ -311,55 +337,62 @@ void printrawtelem(void)
 void loop(void)
 { 
   // Start ADC Readings
-  if (millis() > adc_refresh_time)
-  {
-    adc0 = ADC1.readADC_SingleEnded(0);
-    adc1 = ADC1.readADC_SingleEnded(1);
-    adc2 = ADC1.readADC_SingleEnded(2);
-    adc3 = ADC1.readADC_SingleEnded(3);
-    adc4 = ADC2.readADC_SingleEnded(0);
-    adc5 = ADC2.readADC_SingleEnded(1);
-    adc6 = ADC2.readADC_SingleEnded(2);
-    adc7 = ADC2.readADC_SingleEnded(3);
-    adc_refresh_time=millis()+ADC_REFRESH_PERIOD;
+  if (adcON) {
+    if (millis() > adc_refresh_time)
+    {
+      adc0 = ADC1.readADC_SingleEnded(0);
+      adc1 = ADC1.readADC_SingleEnded(1);
+      adc2 = ADC1.readADC_SingleEnded(2);
+      adc3 = ADC1.readADC_SingleEnded(3);
+      adc4 = ADC2.readADC_SingleEnded(0);
+      adc5 = ADC2.readADC_SingleEnded(1);
+      adc6 = ADC2.readADC_SingleEnded(2);
+      adc7 = ADC2.readADC_SingleEnded(3);
+      adc_refresh_time=millis()+ADC_REFRESH_PERIOD;
+    }
+
   }
+  
   // End ADC Readings
 
   // Start IMU Readings
-  mpu.update();
-  yaw = mpu.getYaw();
-  pitch = mpu.getPitch();
-  roll = mpu.getRoll();
+  if (imuON) {
+    if (millis() > imu_refresh_time)
+    {
+      mpu.update();
+      yaw = mpu.getYaw();
+      pitch = mpu.getPitch();
+      roll = mpu.getRoll();
+      imu_refresh_time = millis() + IMU_REFRESH_PERIOD;
+    }
+  }
   // End IMU Readings
 
   // Start Pressure Readings
-  pressure = PressureSensor.readFloatPressure();          //Pressure
-  temp_c = PressureSensor.readTempC();                    //Temp (C)
-  altitude = PressureSensor.readFloatAltitudeMeters();    //Locally Adjusted Altitude (m)
-  // End Pressure Readings
-
-  // Start GPS Readings
-  if (millis() < gps_refresh_time) {
-    if (GPS.available()) {
-      char c = GPS.read();
-      //Serial.print(c);  // uncomment to see raw GPS data
-      if (gps.encode(c)) {
-        gps_fix = true;
-      }
-    }
-  } 
-  else {
-    if (gps_fix) {
-      gps_refresh_time=millis()+GPS_REFRESH_PERIOD;
-      gps.get_position(&gps_lat, &gps_lon, &gps_age);
-      gps.f_get_position(&gps_flat, &gps_flon, &gps_age);
-      gps.get_datetime(&gps_date, &gps_time, &gps_age);
-      gps.crack_datetime(&gps_year, &gps_month, &gps_day, &gps_hour, &gps_minute, &gps_second, &gps_hundredths, &gps_age);
-      gps.stats(&gps_chars, &gps_sentences, &gps_failed);
+  if (pressureON) {
+    if (millis() > pressure_refresh_time)
+    {
+      pressure = PressureSensor.readFloatPressure();          //Pressure
+      temp_c = PressureSensor.readTempC();                    //Temp (C)
+      altitude = PressureSensor.readFloatAltitudeMeters();    //Locally Adjusted Altitude (m)
     }
   }
+  // End Pressure Readings
 
-  
+// Start GPS Readings
+  if (gpsON) {
+    if (millis() > gps_refresh_time){
+      if (GPS.available()) {
+        char c = GPS.read();
+        //Serial.print(c);  // uncomment to see raw GPS data
+        if (gps.encode(c)) {
+          gps_fix = true;
+          get_gps_data();
+          gps_refresh_time=millis()+GPS_REFRESH_PERIOD;
+        }
+      }
+    }
+  }
   // End GPS Readings
 
   if (millis() > serial_refresh_time)
@@ -371,13 +404,14 @@ void loop(void)
 
 }
 
-
-
-
-
-
-
-
+void get_gps_data()
+{
+  gps.get_position(&gps_lat, &gps_lon, &gps_age);
+  gps.f_get_position(&gps_flat, &gps_flon, &gps_age);
+  gps.get_datetime(&gps_date, &gps_time, &gps_age);
+  gps.crack_datetime(&gps_year, &gps_month, &gps_day, &gps_hour, &gps_minute, &gps_second, &gps_hundredths, &gps_age);
+  gps.stats(&gps_chars, &gps_sentences, &gps_failed);
+}
 
 void print_gps(TinyGPS &gps)
 {
@@ -389,10 +423,8 @@ void print_gps(TinyGPS &gps)
   Serial.print(static_cast<int>(gps_minute)); Serial.print(":"); Serial.print(static_cast<int>(gps_second));
   Serial.print("."); Serial.print(static_cast<int>(gps_hundredths));
   Serial.print("  Fix age: ");  Serial.print(gps_age); Serial.println("ms.");
-  Serial.print("Alt(float): "); gpsPrintFloat(gps.f_altitude()); Serial.print(" Course(float): ");
-  gpsPrintFloat(gps.f_course()); Serial.println();
-  Serial.print("Speed(mps): "); gpsPrintFloat(gps.f_speed_mps()); Serial.print(" (kmph): ");
-  gpsPrintFloat(gps.f_speed_kmph()); Serial.println();
+  Serial.print("Alt(float): "); gpsPrintFloat(gps.f_altitude()); Serial.print(" Course(float): "); gpsPrintFloat(gps.f_course()); Serial.println();
+  Serial.print("Speed(mps): "); gpsPrintFloat(gps.f_speed_mps()); Serial.print(" (kmph): "); gpsPrintFloat(gps.f_speed_kmph()); Serial.println();
 }
 
 void gpsPrintFloat(double number, int digits)
