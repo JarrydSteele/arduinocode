@@ -17,7 +17,7 @@ unsigned long adc_refresh_time;
 const long IMU_REFRESH_PERIOD = 10;
 unsigned long imu_refresh_time;
 
-const long PRESSURE_REFRESH_PERIOD = 500;
+const long PRESSURE_REFRESH_PERIOD = 100;
 unsigned long pressure_refresh_time;
 
 const long GPS_REFRESH_PERIOD = 500;
