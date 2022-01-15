@@ -111,7 +111,7 @@ float gps_flat, gps_flon;
 unsigned long gps_age, gps_date, gps_time, gps_chars;
 int gps_year;
 byte gps_month, gps_day, gps_hour, gps_minute, gps_second, gps_hundredths;
-unsigned short gps_sentences, gps_failed;
+unsigned short gps_sentences, gps_failed, gps_numsats;
 
 /* On Teensy, the UART (real serial port) is always best to use. */
 
@@ -284,7 +284,7 @@ void printtelem(void)
       print_gps(gps);
       Serial.println();
     } else {
-      Serial.println(" --------------------------------------------------------- No GPS fix.");
+      Serial.print(" --------------------------------------------------------- No GPS fix.");
     }
   }
   // End GPS Readings
@@ -298,32 +298,86 @@ void printtelem(void)
 
 
 
-void printrawtelem(void)
+void print_raw_telem(void)
 {
   // Start Print ADC Readings
-  Serial.print(adc0);                Serial.print("\t");
-  Serial.print(adc1);                Serial.print("\t");
-  Serial.print(adc2);                Serial.print("\t");
-  Serial.print(adc3);                Serial.print("\t");
-  Serial.print(adc4);                Serial.print("\t");
-  Serial.print(adc5);                Serial.print("\t");
-  Serial.print(adc6);                Serial.print("\t");
-  Serial.print(adc7);                Serial.print("\t");
+  Serial.print(adc0);                   Serial.print("\t");
+  Serial.print(adc1);                   Serial.print("\t");
+  Serial.print(adc2);                   Serial.print("\t");
+  Serial.print(adc3);                   Serial.print("\t");
+  Serial.print(adc4);                   Serial.print("\t");
+  Serial.print(adc5);                   Serial.print("\t");
+  Serial.print(adc6);                   Serial.print("\t");
+  Serial.print(adc7);                   Serial.print("\t");
   // End Print ADC Readings
 
   // Start Print IMU Readings
-  Serial.print(pitch, 3);            Serial.print("\t");
-  Serial.print(roll, 3);             Serial.print("\t");
-  Serial.print(yaw, 3);              Serial.print("\t");
+  Serial.print(pitch, 3);               Serial.print("\t");
+  Serial.print(roll, 3);                Serial.print("\t");
+  Serial.print(yaw, 3);                 Serial.print("\t");
   // End Print IMU Readings
 
   // Start Print Pressure Readings
-  Serial.print(pressure, 0);         Serial.print("\t");
-  Serial.print(temp_c, 2);           Serial.print("\t");
-  Serial.print(altitude, 2);
+  Serial.print(pressure, 0);            Serial.print("\t");
+  Serial.print(temp_c, 2);              Serial.print("\t");
+  Serial.print(altitude, 2);            Serial.print("\t");
+
+  // End Print Pressure Readings
+
+  // Start Print GPS Readings
+  gpsPrintFloat(gps_flat, 5);           Serial.print("\t"); 
+  gpsPrintFloat(gps_flon, 5);           Serial.print("\t");
+  Serial.print(gps_age);                Serial.print("\t");
+  gpsPrintFloat(gps.f_altitude());      Serial.print("\t");
+  gpsPrintFloat(gps.f_speed_mps());     Serial.print("\t"); 
+  gpsPrintFloat(gps.f_speed_kmph());    Serial.print("\t");
+  Serial.print(gps_numsats);            Serial.print("\t");
+  // End Print GPS Readings
 
   Serial.println();
+
+
+}
+
+void print_csv_telem(void)
+{
+  // Start Print ADC Readings
+  Serial.print(adc0);                   Serial.print(", ");
+  Serial.print(adc1);                   Serial.print(", ");
+  Serial.print(adc2);                   Serial.print(", ");
+  Serial.print(adc3);                   Serial.print(", ");
+  Serial.print(adc4);                   Serial.print(", ");
+  Serial.print(adc5);                   Serial.print(", ");
+  Serial.print(adc6);                   Serial.print(", ");
+  Serial.print(adc7);                   Serial.print(", ");
+  // End Print ADC Readings
+
+  // Start Print IMU Readings
+  Serial.print(pitch, 3);               Serial.print(", ");
+  Serial.print(roll, 3);                Serial.print(", ");
+  Serial.print(yaw, 3);                 Serial.print(", ");
+  // End Print IMU Readings
+
+  // Start Print Pressure Readings
+  Serial.print(pressure, 0);            Serial.print(", ");
+  Serial.print(temp_c, 2);              Serial.print(", ");
+  Serial.print(altitude, 2);            Serial.print(", ");
+
   // End Print Pressure Readings
+
+  // Start Print GPS Readings
+  gpsPrintFloat(gps_flat, 5);           Serial.print(", "); 
+  gpsPrintFloat(gps_flon, 5);           Serial.print(", ");
+  Serial.print(gps_age);                Serial.print(", ");
+  gpsPrintFloat(gps.f_altitude());      Serial.print(", ");
+  gpsPrintFloat(gps.f_speed_mps());     Serial.print(", "); 
+  gpsPrintFloat(gps.f_speed_kmph());    Serial.print(", ");
+  Serial.print(gps_numsats);            Serial.print(", ");
+  // End Print GPS Readings
+
+  Serial.println();
+
+
 }
 
 
@@ -397,7 +451,9 @@ void loop(void)
 
   if (millis() > serial_refresh_time)
   {
-    printtelem();
+    //printtelem();
+    //print_raw_telem();
+    print_csv_telem();
     //print_roll_pitch_yaw();
     serial_refresh_time=millis()+SERIAL_REFRESH_PERIOD;
   }
@@ -411,6 +467,7 @@ void get_gps_data()
   gps.get_datetime(&gps_date, &gps_time, &gps_age);
   gps.crack_datetime(&gps_year, &gps_month, &gps_day, &gps_hour, &gps_minute, &gps_second, &gps_hundredths, &gps_age);
   gps.stats(&gps_chars, &gps_sentences, &gps_failed);
+  gps_numsats = gps.satellites();
 }
 
 void print_gps(TinyGPS &gps)
@@ -425,6 +482,7 @@ void print_gps(TinyGPS &gps)
   Serial.print("  Fix age: ");  Serial.print(gps_age); Serial.println("ms.");
   Serial.print("Alt(float): "); gpsPrintFloat(gps.f_altitude()); Serial.print(" Course(float): "); gpsPrintFloat(gps.f_course()); Serial.println();
   Serial.print("Speed(mps): "); gpsPrintFloat(gps.f_speed_mps()); Serial.print(" (kmph): "); gpsPrintFloat(gps.f_speed_kmph()); Serial.println();
+  Serial.print("Satellites: "); Serial.println(gps_numsats);
 }
 
 void gpsPrintFloat(double number, int digits)
